@@ -1,0 +1,10 @@
+ffmpeg-python>=0.2.0
+librosa>=0.11.0
+numpy>=2.4.4
+pypinyin>=0.55.0
+sherpa-onnx>=1.12.39
+sherpa-onnx-bin>=1.12.39
+soundfile>=0.13.1
+Flask>=3.0.0
+Flask-CORS>=4.0.0
+python-dotenv>=1.0.0

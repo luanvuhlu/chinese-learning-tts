@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese TTS Video Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🎬 Chinese TTS Video Generator</h1>
+            <p>Create videos with Chinese speech synthesis</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Form Section -->
+            <section class="form-section">
+                <div class="form-container">
+                    <h2>Generate Video</h2>
+                    
+                    <!-- Speech Speed Slider -->
+                    <div class="form-group">
+                        <label for="speechSpeed">Speech Speed</label>
+                        <div class="slider-container">
+                            <input 
+                                type="range" 
+                                id="speechSpeed" 
+                                class="slider" 
+                                min="0.1" 
+                                max="2.0" 
+                                step="0.1" 
+                                value="0.9"
+                            >
+                            <span class="slider-value" id="speedValue">0.9x</span>
+                        </div>
+                        <small>Adjust from 0.1x (slow) to 2.0x (fast)</small>
+                    </div>
+
+                    <!-- Delay Slider -->
+                    <div class="form-group">
+                        <label for="delaySlider">Delay Between Sentences</label>
+                        <div class="slider-container">
+                            <input 
+                                type="range" 
+                                id="delaySlider" 
+                                class="slider" 
+                                min="0" 
+                                max="1" 
+                                step="0.1" 
+                                value="0.2"
+                            >
+                            <span class="slider-value" id="delayValue">0.2s</span>
+                        </div>
+                        <small>Adjust pause duration: 0 to 1 seconds</small>
+                    </div>
+
+                    <!-- Content Textarea -->
+                    <div class="form-group">
+                        <label for="content">Content (Max 1000 characters)</label>
+                        <textarea 
+                            id="content" 
+                            class="textarea" 
+                            placeholder="Enter Chinese text here&#10;You can use speaker format like:&#10;大卫：Hello&#10;李军：Hi"
+                            maxlength="1000"
+                        ></textarea>
+                        <div class="char-counter">
+                            <span id="charCount">0</span> / 1000
+                        </div>
+                        <!-- Generate Button -->
+                        <button id="generateBtn" class="btn btn-primary">Generate Video</button>
+                    </div>
+                    
+
+                    <!-- Suggestion Prompt -->
+<div class="suggestion-box">
+    <div class="suggestion-header">
+        <h3>💡 Suggestion Prompt</h3>
+        <button id="copyPromptBtn" class="copy-btn">📋 Copy</button>
+    </div>
+
+    <div class="prompt-content" id="promptText">
+Sử dụng các từ vựng ở trong này, tạo một cuộc hội thoại ngẫu nhiên tiếng Trung Quốc có từ 2 đến 3 người. Hội thoại có khoảng 30 câu, mỗi câu không quá 14 từ, trung bình khoảng 10 từ.
+
+Bỏ qua mấy đoạn chào hỏi tên đơn giản đi.
+
+Chủ đề lần này tập trung với:
+- địa điểm
+- đi đâu
+- thời tiết
+- sở thích
+- gia đình
+
+Output chính xác như dưới đây:
+multiple lines, không số, không bullet, không giải thích.
+
+大卫： 李军，你好！
+李军： 你好，大卫。你去哪儿？
+大卫： 我去图书馆。请问，图书馆在哪儿？
+    </div>
+</div>
+                </div>
+            </section>
+
+            <!-- Result Section -->
+            <section class="result-section" id="resultSection" style="display: none;">
+                <div class="result-container">
+                    <!-- Progress Display -->
+                    <div id="progressContainer" class="progress-container" style="display: none;">
+                        <h3>Generating Video...</h3>
+                        <div class="spinner"></div>
+                        <p id="progressText">Please wait, this may take a few minutes...</p>
+                    </div>
+
+                    <!-- Video Player -->
+                    <div id="videoContainer" class="video-container" style="display: none;">
+                        <h3>Video Generated Successfully! 🎉</h3>
+                        <video 
+                            id="videoPlayer" 
+                            controls 
+                            class="video-player"
+                        >
+                            <source src="" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+
+                        <!-- Controls -->
+                        <div class="video-controls">
+                            <button id="downloadBtn" class="btn btn-secondary">⬇️ Download Video</button>
+                            <button id="newGenerateBtn" class="btn btn-primary">➕ Generate Another</button>
+                        </div>
+                    </div>
+
+                    <!-- Error Display -->
+                    <div id="errorContainer" class="error-container" style="display: none;">
+                        <h3>⚠️ Error</h3>
+                        <p id="errorText"></p>
+                        <button id="retryBtn" class="btn btn-primary">Try Again</button>
+                    </div>
+                </div>
+            </section>
+            <section class="history-section">
+                <div class="history-container">
+                    <div class="history-header">
+                        <h2>🎬 Recent Videos</h2>
+                        <button id="refreshVideosBtn">↻ Refresh</button>
+                    </div>
+
+                    <div id="videoHistoryList" class="video-history-list">
+                        Loading...
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 Chinese TTS Video Generator. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

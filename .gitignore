@@ -178,6 +178,15 @@ cython_debug/
 # Abstra
 # Abstra is an AI-powered process automation framework.
 # Ignore directories containing user credentials, local state, and settings.
+
+# Project specific
+uploads/
+temp_*.wav
+concat_list.txt
+filter_complex.txt
+full_audio.wav
+*.mp4
+!models/*.mp4
 # Learn more at https://abstra.io/docs
 .abstra/
 
