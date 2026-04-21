@@ -6,6 +6,7 @@ import numpy as np
 import soundfile as sf
 import sherpa_onnx
 from pypinyin import pinyin, Style
+import re
 
 # --- CẤU HÌNH ---
 BG_IMAGE = "background.png"
@@ -14,26 +15,36 @@ OUTPUT_AUDIO = 'full_audio.wav'
 FONT_PATH = "models/msyh.ttc" 
 MS_PER_CHAR = 0.3  # Nghỉ 0.3 giây cho mỗi chữ Hán
 
-text = """大卫：李军，你好！
-李军：你好，大卫，你今天有课吗？
-大卫：有，我上午八点上课。
-玛丽：你们去哪儿？
-大卫：我们去教学楼。
-玛丽：请问，教学楼在哪儿？
-李军：教学楼在图书馆东边。
-玛丽：谢谢你！
-李军：不客气。你是哪个国家人？
-玛丽：我是法国人，你呢？
-李军：我是中国人，大卫是越南人。
-大卫：认识你，我很高兴。
-玛丽：我也很高兴。你们学什么专业？
-李军：我学国际关系，大卫学汉语。
-大卫：玛丽，你有词典吗？
-玛丽：有，这本就是我的词典。
-大卫：现在几点钟？
-李军：现在七点半。
-玛丽：时间不多了，我们快去吧！
-大卫：好，一会儿见！
+text = """大卫：今天天气怎么样？
+李军：今天晴天，很暖和。
+玛丽：我觉得有点儿热。
+大卫：下午去哪儿玩儿？
+李军：我想去校园北边。
+玛丽：那边有图书馆吗？
+李军：有，在教学楼旁边。
+大卫：我也想去看看。
+玛丽：我先去教室上课。
+李军：你几点下课？
+玛丽：三点半下课。
+大卫：下课后去吗？
+玛丽：好，我们一起去。
+李军：晚上想看电影吗？
+大卫：当然，我很喜欢。
+玛丽：电影院在哪儿？
+李军：学校东边，很近。
+大卫：我们坐出租车吧。
+玛丽：走路也可以。
+李军：我家在附近。
+大卫：你家几口人？
+李军：爸爸妈妈和妹妹。
+玛丽：你爷爷奶奶呢？
+李军：他们在北京。
+大卫：周末常见他们吗？
+李军：不常，可是常打电话。
+玛丽：你妹妹喜欢什么？
+李军：她喜欢音乐和游泳。
+大卫：我喜欢汉语文学。
+玛丽：今天真舒服，快走吧。
 """ # ... (các câu còn lại của bạn)
 
 def transform_data(multi_line_text):
@@ -44,6 +55,9 @@ def transform_data(multi_line_text):
         py_string = " ".join([item[0] for item in py_list])
         data_list.append({"zh": sentence, "py": py_string})
     return data_list
+
+def count_chinese_chars_only(text):
+    return sum(1 for _ in re.finditer(r'[\u4e00-\u9fff]', text))
 
 def create_tts():
     # Giữ nguyên cấu hình Matcha-TTS của bạn
@@ -148,7 +162,7 @@ def generate_audio(data, audio_segments, subtitle_configs, concat_list):
         speech_dur = len(audio.samples) / audio.sample_rate
         
         # 2. Tính toán thời gian nghỉ
-        silence_dur = len(escape_speaker_text(item['zh'])) * MS_PER_CHAR
+        silence_dur = count_chinese_chars_only(escape_speaker_text(item['zh'])) * MS_PER_CHAR
         silence_path = f"temp_silence_{i}.wav"
         create_silence(silence_dur, audio.sample_rate, silence_path)
 
