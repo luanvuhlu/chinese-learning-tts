@@ -323,15 +323,30 @@ function isValidChineseText(text) {
 
 document.getElementById("copyPromptBtn").addEventListener("click", async () => {
     const text = document.getElementById("promptText").innerText;
-
-    await navigator.clipboard.writeText(text);
-
     const btn = document.getElementById("copyPromptBtn");
-    btn.innerText = "✅ Copied!";
-    
-    setTimeout(() => {
-        btn.innerText = "📋 Copy";
-    }, 1500);
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            // fallback
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            textarea.remove();
+        }
+
+        btn.innerText = "✅ Copied!";
+        setTimeout(() => {
+            btn.innerText = "📋 Copy";
+        }, 1500);
+
+    } catch (err) {
+        console.error(err);
+        btn.innerText = "❌ Failed";
+    }
 });
 async function loadVideos() {
     const list = document.getElementById("videoHistoryList");
