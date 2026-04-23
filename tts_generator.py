@@ -137,7 +137,10 @@ def generate_audio(data, audio_segments, delay, subtitle_configs, concat_list, s
         
         speech_dur = len(audio.samples) / audio.sample_rate
         
-        # 2. Create silence pause only if not single sentence and not the last sentence
+        # 2. Append speech FIRST (no delay at start)
+        audio_segments.append(speech_path)
+
+        # 3. Create silence pause only if not single sentence and not the last sentence
         silence_dur = 0
         if num_sentences > 1 and i < num_sentences - 1:
             # silence_dur = count_chinese_chars_only(escape_speaker_text(item['zh'])) * MS_PER_CHAR
@@ -146,15 +149,13 @@ def generate_audio(data, audio_segments, delay, subtitle_configs, concat_list, s
             create_silence(silence_dur, audio.sample_rate, silence_path)
             audio_segments.append(silence_path)
 
-        # Store subtitle timing
+        # Store subtitle timing - only speech duration, keeps old subtitle during silence
         subtitle_configs.append({
             "start": current_time,
-            "end": current_time + speech_dur + silence_dur, 
+            "end": current_time + speech_dur, 
             "zh": item['zh'],
             "py": item['py']
         })
-        
-        audio_segments.append(speech_path)
         
         # Update time for next sentence
         current_time += (speech_dur + silence_dur)
