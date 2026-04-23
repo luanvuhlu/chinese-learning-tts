@@ -313,7 +313,7 @@ def generate():
         
         jobs[job_id] = {
             'status': 'pending',
-            'created_at': datetime.now().isoformat(),
+            'created_at': int(datetime.now().timestamp() * 1000),  # Unix timestamp in milliseconds
             'text_length': len(content),
             'output_format': output_format
         }

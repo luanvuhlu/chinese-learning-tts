@@ -105,6 +105,8 @@ def generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_s
     """Generate audio segments with specified speech speed"""
     tts = create_tts()
     current_time = 0.0
+    num_sentences = len(data)
+    
     for i, item in enumerate(data):
         # 1. Create speech audio
         speech_path = f"temp_speech_{i}.wav"
@@ -113,10 +115,13 @@ def generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_s
         
         speech_dur = len(audio.samples) / audio.sample_rate
         
-        # 2. Create silence pause
-        silence_dur = count_chinese_chars_only(escape_speaker_text(item['zh'])) * MS_PER_CHAR
-        silence_path = f"temp_silence_{i}.wav"
-        create_silence(silence_dur, audio.sample_rate, silence_path)
+        # 2. Create silence pause only if not single sentence and not the last sentence
+        silence_dur = 0
+        if num_sentences > 1 and i < num_sentences - 1:
+            silence_dur = count_chinese_chars_only(escape_speaker_text(item['zh'])) * MS_PER_CHAR
+            silence_path = f"temp_silence_{i}.wav"
+            create_silence(silence_dur, audio.sample_rate, silence_path)
+            audio_segments.append(silence_path)
 
         # Store subtitle timing
         subtitle_configs.append({
@@ -127,12 +132,12 @@ def generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_s
         })
         
         audio_segments.append(speech_path)
-        audio_segments.append(silence_path)
         
         # Update time for next sentence
         current_time += (speech_dur + silence_dur)
         
-        print(f"Done sentence {i+1}: {item['zh']} (Duration: {speech_dur + silence_dur:.2f}s)")
+        duration_display = speech_dur + silence_dur
+        print(f"Done sentence {i+1}: {item['zh']} (Duration: {duration_display:.2f}s)")
     
     print("🎵 Concatenating audio segments...")
     with open(concat_list, "w", encoding="utf-8") as f:

@@ -225,9 +225,8 @@ function pollJobStatus() {
 
             const job = await response.json();
             
-            // Update progress text based on elapsed time
-            const createdAt = new Date(job.created_at);
-            const elapsedSeconds = Math.floor((Date.now() - createdAt) / 1000);
+            // Update progress text based on elapsed time (created_at is Unix timestamp in milliseconds)
+            const elapsedSeconds = Math.floor((Date.now() - job.created_at) / 1000);
             const formatType = job.output_format === 'audio' ? 'audio' : 'video';
             let progressMsg = `Generating ${formatType}... (${elapsedSeconds}s elapsed)`;
             
