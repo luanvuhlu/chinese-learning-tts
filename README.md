@@ -198,6 +198,8 @@ The application is fully responsive:
 
 ## Example Usage
 
+Demo Link: [Web UI](http://107.152.32.201:5000/)
+
 ### Sample Input
 ```
 大卫：你好，李军。
