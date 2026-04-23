@@ -19,7 +19,7 @@
             <!-- Form Section -->
             <section class="form-section">
                 <div class="form-container">
-                    <h2>Generate Video</h2>
+                    <h2 id="formTitle">Generate Video</h2>
                     
                     <!-- Speech Speed Slider -->
                     <div class="form-group">
@@ -55,6 +55,41 @@
                             <span class="slider-value" id="delayValue">0.2s</span>
                         </div>
                         <small>Adjust pause duration: 0 to 1 seconds</small>
+                    </div>
+
+                    <!-- Output Format Selector -->
+                    <div class="form-group">
+                        <label>Output Format</label>
+                        <div class="format-selector">
+                            <label class="radio-label">
+                                <input type="radio" name="output_format" value="video" checked>
+                                <span class="radio-custom"></span>
+                                🎬 Video (MP4)
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="output_format" value="audio">
+                                <span class="radio-custom"></span>
+                                🎵 Audio (MP3)
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Background Image Upload (Video Only) -->
+                    <div class="form-group" id="bgImageGroup">
+                        <label for="bgImageInput">Background Image (Optional)</label>
+                        <div class="file-input-wrapper">
+                            <input 
+                                type="file" 
+                                id="bgImageInput" 
+                                class="file-input" 
+                                accept="image/*"
+                            >
+                            <label for="bgImageInput" class="file-input-label">
+                                📸 Choose Image or Drag & Drop
+                            </label>
+                            <small id="imageFileName" style="color: #666; margin-top: 8px; display: block;"></small>
+                        </div>
+                        <small>Supported formats: PNG, JPG, JPEG, BMP, GIF (optional)</small>
                     </div>
 
                     <!-- Content Textarea -->
@@ -96,7 +131,7 @@
                         <p id="progressText">Please wait, this may take a few minutes...</p>
                     </div>
 
-                    <!-- Video Player -->
+                    <!-- Video Player (Video Format) -->
                     <div id="videoContainer" class="video-container" style="display: none;">
                         <h3>Video Generated Successfully! 🎉</h3>
                         <video 
@@ -110,8 +145,27 @@
 
                         <!-- Controls -->
                         <div class="video-controls">
-                            <button id="downloadBtn" class="btn btn-secondary">⬇️ Download Video</button>
+                            <button id="downloadBtn" class="btn btn-secondary">⬇️ Download</button>
                             <button id="newGenerateBtn" class="btn btn-primary">➕ Generate Another</button>
+                        </div>
+                    </div>
+
+                    <!-- Audio Player (Audio Format) -->
+                    <div id="audioContainer" class="audio-container" style="display: none;">
+                        <h3>Audio Generated Successfully! 🎉</h3>
+                        <audio 
+                            id="audioPlayer" 
+                            controls 
+                            class="audio-player"
+                        >
+                            <source src="" type="audio/mpeg">
+                            Your browser does not support the audio tag.
+                        </audio>
+
+                        <!-- Controls -->
+                        <div class="audio-controls">
+                            <button id="downloadAudioBtn" class="btn btn-secondary">⬇️ Download Audio</button>
+                            <button id="newGenerateAudioBtn" class="btn btn-primary">➕ Generate Another</button>
                         </div>
                     </div>
 

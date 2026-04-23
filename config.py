@@ -39,6 +39,7 @@ class Config:
     # Server Configuration
     HOST = os.getenv('HOST', '0.0.0.0')
     PORT = int(os.getenv('PORT', 5000))
+    FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
 
 
 class DevelopmentConfig(Config):

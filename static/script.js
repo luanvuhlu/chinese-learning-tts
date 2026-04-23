@@ -13,15 +13,25 @@ const generateBtn = document.getElementById('generateBtn');
 const resultSection = document.getElementById('resultSection');
 const progressContainer = document.getElementById('progressContainer');
 const videoContainer = document.getElementById('videoContainer');
+const audioContainer = document.getElementById('audioContainer');
 const errorContainer = document.getElementById('errorContainer');
 const videoPlayer = document.getElementById('videoPlayer');
+const audioPlayer = document.getElementById('audioPlayer');
 const downloadBtn = document.getElementById('downloadBtn');
+const downloadAudioBtn = document.getElementById('downloadAudioBtn');
 const newGenerateBtn = document.getElementById('newGenerateBtn');
+const newGenerateAudioBtn = document.getElementById('newGenerateAudioBtn');
 const errorText = document.getElementById('errorText');
 const retryBtn = document.getElementById('retryBtn');
+const formTitle = document.getElementById('formTitle');
+const bgImageGroup = document.getElementById('bgImageGroup');
+const bgImageInput = document.getElementById('bgImageInput');
+const imageFileName = document.getElementById('imageFileName');
+const formatRadios = document.querySelectorAll('input[name="output_format"]');
 
 // ============ STATE ============
 let currentJobId = null;
+let currentOutputFormat = 'video';
 let statusCheckInterval = null;
 
 // ============ EVENT LISTENERS ============
@@ -43,19 +53,76 @@ contentTextarea.addEventListener('input', (e) => {
     charCount.textContent = e.target.value.length;
 });
 
+// Format selector change
+formatRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        currentOutputFormat = e.target.value;
+        updateFormatUI();
+    });
+});
+
+// File input change
+bgImageInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        imageFileName.textContent = `✅ Selected: ${e.target.files[0].name}`;
+    } else {
+        imageFileName.textContent = '';
+    }
+});
+
+// Drag & drop for file input
+const fileInputLabel = document.querySelector('.file-input-label');
+if (fileInputLabel) {
+    fileInputLabel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileInputLabel.classList.add('drag-over');
+    });
+
+    fileInputLabel.addEventListener('dragleave', () => {
+        fileInputLabel.classList.remove('drag-over');
+    });
+
+    fileInputLabel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileInputLabel.classList.remove('drag-over');
+        
+        if (e.dataTransfer.files.length > 0) {
+            bgImageInput.files = e.dataTransfer.files;
+            imageFileName.textContent = `✅ Selected: ${e.dataTransfer.files[0].name}`;
+        }
+    });
+}
+
 // Generate button click
 generateBtn.addEventListener('click', handleGenerateClick);
 
-// Download button click
-downloadBtn.addEventListener('click', handleDownloadClick);
+// Download buttons
+if (downloadBtn) downloadBtn.addEventListener('click', handleDownloadClick);
+if (downloadAudioBtn) downloadAudioBtn.addEventListener('click', handleDownloadAudioClick);
 
-// New generate button
-newGenerateBtn.addEventListener('click', resetForm);
+// New generate buttons
+if (newGenerateBtn) newGenerateBtn.addEventListener('click', resetForm);
+if (newGenerateAudioBtn) newGenerateAudioBtn.addEventListener('click', resetForm);
 
 // Retry button
-retryBtn.addEventListener('click', resetForm);
+if (retryBtn) retryBtn.addEventListener('click', resetForm);
 
 // ============ FUNCTIONS ============
+
+/**
+ * Update UI based on output format
+ */
+function updateFormatUI() {
+    if (currentOutputFormat === 'audio') {
+        formTitle.textContent = 'Generate Audio';
+        generateBtn.textContent = 'Generate Audio';
+        bgImageGroup.style.display = 'none';
+    } else {
+        formTitle.textContent = 'Generate Video';
+        generateBtn.textContent = 'Generate Video';
+        bgImageGroup.style.display = 'block';
+    }
+}
 
 /**
  * Handle generate button click
@@ -78,27 +145,34 @@ async function handleGenerateClick() {
 
     // Disable button and show progress
     generateBtn.disabled = true;
-    generateBtn.textContent = 'Generating...';
+    generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generating...' : 'Generating...';
 
     try {
         console.log('📤 Sending request to API...');
         console.log({
             content_length: content.length,
             speech_speed: speechSpeed,
-            delay: delay
+            delay: delay,
+            output_format: currentOutputFormat
         });
 
-        // Call API to generate video
+        // Prepare FormData for multipart request
+        const formData = new FormData();
+        formData.append('content', content);
+        formData.append('speech_speed', speechSpeed);
+        formData.append('delay', delay);
+        formData.append('output_format', currentOutputFormat);
+
+        // Add background image if video format and file selected
+        if (currentOutputFormat === 'video' && bgImageInput.files.length > 0) {
+            formData.append('background_image', bgImageInput.files[0]);
+            console.log('📸 Background image added:', bgImageInput.files[0].name);
+        }
+
+        // Call API to generate video/audio
         const response = await fetch('/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                content: content,
-                speech_speed: speechSpeed,
-                delay: delay
-            })
+            body: formData
         });
 
         if (!response.ok) {
@@ -109,12 +183,13 @@ async function handleGenerateClick() {
         const data = await response.json();
         currentJobId = data.job_id;
         
-        console.log('✅ Job created:', currentJobId);
+        console.log('✅ Job created:', currentJobId, 'Format:', data.output_format);
 
         // Show result section with progress
         resultSection.style.display = 'block';
         progressContainer.style.display = 'block';
         videoContainer.style.display = 'none';
+        audioContainer.style.display = 'none';
         errorContainer.style.display = 'none';
 
         // Scroll to result section
@@ -126,8 +201,8 @@ async function handleGenerateClick() {
     } catch (error) {
         console.error('❌ Error:', error);
         generateBtn.disabled = false;
-        generateBtn.textContent = 'Generate Video';
-        showError(error.message || 'Failed to generate video');
+        generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generate Audio' : 'Generate Video';
+        showError(error.message || `Failed to generate ${currentOutputFormat}`);
     }
 }
 
@@ -153,7 +228,8 @@ function pollJobStatus() {
             // Update progress text based on elapsed time
             const createdAt = new Date(job.created_at);
             const elapsedSeconds = Math.floor((Date.now() - createdAt) / 1000);
-            let progressMsg = `Generating video... (${elapsedSeconds}s elapsed)`;
+            const formatType = job.output_format === 'audio' ? 'audio' : 'video';
+            let progressMsg = `Generating ${formatType}... (${elapsedSeconds}s elapsed)`;
             
             if (elapsedSeconds > 30) {
                 progressMsg += '\n(Usually takes 1-5 minutes depending on text length)';
@@ -163,12 +239,12 @@ function pollJobStatus() {
 
             if (job.status === 'completed') {
                 clearInterval(statusCheckInterval);
-                console.log('✅ Video generation completed');
-                showVideo();
+                console.log('✅ Generation completed');
+                showResult(job.output_format);
             } else if (job.status === 'failed') {
                 clearInterval(statusCheckInterval);
-                console.error('❌ Video generation failed:', job.error);
-                showError(job.error || 'Video generation failed');
+                console.error('❌ Generation failed:', job.error);
+                showError(job.error || 'Generation failed');
             } else {
                 console.log(`⏳ Job status: ${job.status}`);
             }
@@ -181,23 +257,37 @@ function pollJobStatus() {
 }
 
 /**
- * Show video player
+ * Show result (video or audio)
  */
-function showVideo() {
+function showResult(outputFormat) {
     progressContainer.style.display = 'none';
-    videoContainer.style.display = 'block';
     errorContainer.style.display = 'none';
 
-    // Set video source
-    const videoUrl = `/api/videos/${currentJobId}`;
-    videoPlayer.src = videoUrl;
+    if (outputFormat === 'audio') {
+        videoContainer.style.display = 'none';
+        audioContainer.style.display = 'block';
 
-    // Scroll to video
-    videoContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Set audio source
+        const audioUrl = `/api/videos/${currentJobId}`;
+        audioPlayer.src = audioUrl;
+
+        // Scroll to audio player
+        audioContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        audioContainer.style.display = 'none';
+        videoContainer.style.display = 'block';
+
+        // Set video source
+        const videoUrl = `/api/videos/${currentJobId}`;
+        videoPlayer.src = videoUrl;
+
+        // Scroll to video player
+        videoContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     // Re-enable generate button
     generateBtn.disabled = false;
-    generateBtn.textContent = 'Generate Video';
+    generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generate Audio' : 'Generate Video';
 }
 
 /**
@@ -207,6 +297,7 @@ function showError(message) {
     resultSection.style.display = 'block';
     progressContainer.style.display = 'none';
     videoContainer.style.display = 'none';
+    audioContainer.style.display = 'none';
     errorContainer.style.display = 'block';
     
     // Truncate very long error messages
@@ -223,7 +314,7 @@ function showError(message) {
 
     // Re-enable button
     generateBtn.disabled = false;
-    generateBtn.textContent = 'Generate Video';
+    generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generate Audio' : 'Generate Video';
 
     // Scroll to error
     setTimeout(() => {
@@ -232,7 +323,7 @@ function showError(message) {
 }
 
 /**
- * Handle download button click
+ * Handle video download button click
  */
 function handleDownloadClick() {
     if (!currentJobId) return;
@@ -247,6 +338,21 @@ function handleDownloadClick() {
 }
 
 /**
+ * Handle audio download button click
+ */
+function handleDownloadAudioClick() {
+    if (!currentJobId) return;
+
+    const audioUrl = `/api/videos/${currentJobId}?download=true`;
+    const link = document.createElement('a');
+    link.href = audioUrl;
+    link.download = `generated_${currentJobId.substring(0, 8)}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+/**
  * Reset form to initial state
  */
 function resetForm() {
@@ -255,15 +361,25 @@ function resetForm() {
     delaySlider.value = '0.2';
     contentTextarea.value = '';
     charCount.textContent = '0';
+    currentOutputFormat = 'video';
+    
+    // Reset format selector
+    document.querySelector('input[name="output_format"][value="video"]').checked = true;
+    
+    // Reset file input
+    bgImageInput.value = '';
+    imageFileName.textContent = '';
 
     // Update displays
     speedValue.textContent = '0.9x';
     delayValue.textContent = '0.2s';
+    updateFormatUI();
 
     // Hide result section
     resultSection.style.display = 'none';
     progressContainer.style.display = 'none';
     videoContainer.style.display = 'none';
+    audioContainer.style.display = 'none';
     errorContainer.style.display = 'none';
 
     // Clear states
@@ -289,6 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize slider displays
     speedValue.textContent = speechSpeedSlider.value + 'x';
     delayValue.textContent = delaySlider.value + 's';
+
+    // Initialize format UI
+    updateFormatUI();
 
     // Focus on textarea
     contentTextarea.focus();
@@ -321,65 +440,82 @@ function isValidChineseText(text) {
     return /[\u4e00-\u9fff]/.test(text);
 }
 
-document.getElementById("copyPromptBtn").addEventListener("click", async () => {
-    const text = document.getElementById("promptText").innerText;
-    const btn = document.getElementById("copyPromptBtn");
+// Copy prompt button
+const copyPromptBtn = document.getElementById("copyPromptBtn");
+if (copyPromptBtn) {
+    copyPromptBtn.addEventListener("click", async () => {
+        const text = document.getElementById("promptText").innerText;
+        const btn = copyPromptBtn;
 
-    try {
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(text);
-        } else {
-            // fallback
-            const textarea = document.createElement("textarea");
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand("copy");
-            textarea.remove();
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                // fallback
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand("copy");
+                textarea.remove();
+            }
+
+            btn.innerText = "✅ Copied!";
+            setTimeout(() => {
+                btn.innerText = "📋 Copy";
+            }, 1500);
+
+        } catch (err) {
+            console.error(err);
+            btn.innerText = "❌ Failed";
         }
-
-        btn.innerText = "✅ Copied!";
-        setTimeout(() => {
-            btn.innerText = "📋 Copy";
-        }, 1500);
-
-    } catch (err) {
-        console.error(err);
-        btn.innerText = "❌ Failed";
-    }
-});
+    });
+}
 async function loadVideos() {
     const list = document.getElementById("videoHistoryList");
     list.innerHTML = "Loading...";
 
     try {
         const res = await fetch("/api/videos");
+        
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+        
         const data = await res.json();
 
-        if (!data.videos.length) {
-            list.innerHTML = "<p>No videos yet.</p>";
+        if (!data.files || data.files.length === 0) {
+            list.innerHTML = "<p>No videos or audio files yet.</p>";
             return;
         }
 
-        list.innerHTML = data.videos.map(video => `
-            <div class="video-item">
-                <div>
-                    <strong>${video.filename}</strong>
-                    <div class="video-meta">
-                        ${(video.size / 1024 / 1024).toFixed(2)} MB · 
-                        ${new Date(video.created_at).toLocaleString()}
+        list.innerHTML = data.files.map(file => {
+            const icon = file.file_type === 'audio' ? '🎵' : '🎬';
+            const typeLabel = file.file_type === 'audio' ? 'Audio' : 'Video';
+            const ext = file.file_type === 'audio' ? '.mp3' : '.mp4';
+            
+            return `
+                <div class="video-item">
+                    <div>
+                        <strong>${icon} ${file.filename}</strong>
+                        <div class="video-meta">
+                            ${typeLabel} · 
+                            ${(file.size / 1024 / 1024).toFixed(2)} MB · 
+                            ${new Date(file.created_at).toLocaleString()}
+                        </div>
+                    </div>
+
+                    <div class="video-actions">
+                        <a href="${file.url}" target="_blank">▶ Play</a>
+                        <a href="${file.url}?download=true" download="generated_${file.id.substring(0, 8)}${ext}">⬇ Download</a>
                     </div>
                 </div>
-
-                <div class="video-actions">
-                    <a href="${video.url}" target="_blank">▶ Play</a>
-                    <a href="${video.url}" download>⬇ Download</a>
-                </div>
-            </div>
-        `).join("");
+            `;
+        }).join("");
 
     } catch (err) {
-        list.innerHTML = "<p>Failed to load videos.</p>";
+        console.error('Error loading videos:', err);
+        list.innerHTML = `<p>Failed to load files: ${err.message}</p>`;
     }
 }
 

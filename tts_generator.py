@@ -146,7 +146,90 @@ def generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_s
         raise RuntimeError(f"FFmpeg concat failed: {result.stderr}")
 
 
-def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/final_video.mp4"):
+def create_audio_only(text_content, speech_speed=0.9, delay=0.2, output_path="data/final_audio.mp3"):
+    """
+    Generate audio-only (MP3) from text with specified parameters
+    
+    Args:
+        text_content: Multi-line Chinese text
+        speech_speed: Speech speed (0.1 to 2.0)
+        delay: Delay between sentences (0 to 1)
+        output_path: Path to save output MP3 file
+    
+    Returns:
+        Path to generated MP3 file
+    """
+    # Adjust MS_PER_CHAR based on delay parameter
+    global MS_PER_CHAR
+    original_ms_per_char = MS_PER_CHAR
+    MS_PER_CHAR = 0.3 * (1 + delay * 2)
+    
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_path)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+    
+    try:
+        data = transform_data(text_content)
+        if not data:
+            raise ValueError("No valid Chinese sentences found in text")
+        
+        audio_segments = []
+        subtitle_configs = []
+        
+        print(f"🚀 Starting to create audio {len(data)} sentences...")
+        
+        concat_list = "concat_list.txt"
+        output_wav = output_path.replace('.mp3', '.wav')
+        
+        # Generate audio
+        generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_speed, output_wav)
+        
+        # Verify audio file was created
+        if not os.path.exists(output_wav):
+            raise RuntimeError(f"Audio file was not created: {output_wav}")
+        
+        print("🎵 Converting to MP3...")
+        
+        # Convert WAV to MP3 using FFmpeg
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', output_wav,
+            '-q:a', '9',  # Quality: 0-9 (9 is highest compression, lowest quality)
+            output_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg MP3 conversion failed: {result.stderr}")
+        
+        # Cleanup temp files
+        for p in audio_segments:
+            if os.path.exists(p):
+                os.remove(p)
+        if os.path.exists(concat_list):
+            os.remove(concat_list)
+        if os.path.exists(output_wav):
+            os.remove(output_wav)
+        
+        print(f"✅ Audio complete! MP3 saved at: {output_path}")
+        return output_path
+        
+    except Exception as e:
+        # Cleanup on error
+        for f in ["concat_list.txt", "filter_complex.txt"]:
+            if os.path.exists(f):
+                try:
+                    os.remove(f)
+                except:
+                    pass
+        raise
+        
+    finally:
+        MS_PER_CHAR = original_ms_per_char
+
+
+def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/final_video.mp4", bg_image=None):
     """
     Generate video from text with specified parameters
     
@@ -155,10 +238,14 @@ def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/fi
         speech_speed: Speech speed (0.1 to 2.0)
         delay: Delay between sentences (0 to 1)
         output_path: Path to save output video
+        bg_image: Optional path to background image (uses default if None)
     
     Returns:
         Path to generated video file
     """
+    # Use provided background image or default
+    background_image = bg_image if bg_image and os.path.exists(bg_image) else BG_IMAGE
+    
     # Adjust MS_PER_CHAR based on delay parameter
     global MS_PER_CHAR
     original_ms_per_char = MS_PER_CHAR
@@ -192,10 +279,10 @@ def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/fi
         filter_script_path = create_ffmpeg_script(subtitle_configs)
         print("🎬 Rendering final video...")
         
-        # Render video
+        # Render video with specified background image
         cmd = [
             'ffmpeg', '-y',
-            '-loop', '1', '-i', BG_IMAGE,
+            '-loop', '1', '-i', background_image,
             '-i', output_audio,
             '-filter_complex_script', filter_script_path,
             '-c:v', 'libx264', '-preset', 'ultrafast',
