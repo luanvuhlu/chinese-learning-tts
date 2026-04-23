@@ -149,10 +149,10 @@ def generate_audio(data, audio_segments, delay, subtitle_configs, concat_list, s
             create_silence(silence_dur, audio.sample_rate, silence_path)
             audio_segments.append(silence_path)
 
-        # Store subtitle timing - only speech duration, keeps old subtitle during silence
+        # Store subtitle timing - include silence duration so subtitle stays visible during pause
         subtitle_configs.append({
             "start": current_time,
-            "end": current_time + speech_dur, 
+            "end": current_time + speech_dur + silence_dur, 
             "zh": item['zh'],
             "py": item['py']
         })
