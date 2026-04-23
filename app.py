@@ -216,18 +216,25 @@ def list_videos():
         items = []
 
         for file in files:
+            file_id = file.stem
+            
+            # Skip files that are still being generated (job is pending/processing)
+            if file_id in jobs:
+                job = jobs[file_id]
+                if job['status'] != 'completed':
+                    # File is still being created, skip it
+                    continue
+            
             stat = file.stat()
             file_type = 'video' if file.suffix == '.mp4' else 'audio'
 
             items.append({
-                "id": file.stem,
+                "id": file_id,
                 "filename": file.name,
-                "url": f"/api/videos/{file.stem}",
+                "url": f"/api/videos/{file_id}",
                 "file_type": file_type,
                 "size": stat.st_size,
-                "created_at": datetime.fromtimestamp(
-                    stat.st_mtime
-                ).isoformat()
+                "created_at": int(stat.st_mtime * 1000)  # Unix timestamp in milliseconds
             })
 
         # Sort by creation time (newest first)

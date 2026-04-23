@@ -492,6 +492,7 @@ async function loadVideos() {
             const icon = file.file_type === 'audio' ? '🎵' : '🎬';
             const typeLabel = file.file_type === 'audio' ? 'Audio' : 'Video';
             const ext = file.file_type === 'audio' ? '.mp3' : '.mp4';
+            const createdDate = new Date(file.created_at);  // created_at is Unix timestamp in milliseconds
             
             return `
                 <div class="video-item">
@@ -500,7 +501,7 @@ async function loadVideos() {
                         <div class="video-meta">
                             ${typeLabel} · 
                             ${(file.size / 1024 / 1024).toFixed(2)} MB · 
-                            ${new Date(file.created_at).toLocaleString()}
+                            ${createdDate.toLocaleString()}
                         </div>
                     </div>
 
