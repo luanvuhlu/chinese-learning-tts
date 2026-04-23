@@ -84,9 +84,9 @@ def validate_parameters(data):
     
     # Validate delay
     try:
-        delay = float(data.get('delay', 0.2))
-        if delay < 0 or delay > 1:
-            errors.append("Delay must be between 0 and 1")
+        delay = float(data.get('delay', 2.0))
+        if delay < 0 or delay > 10:
+            errors.append("Delay must be between 0 and 10")
     except (ValueError, TypeError):
         errors.append("Invalid delay value")
     
@@ -306,8 +306,8 @@ def generate():
         if speech_speed < 0.1 or speech_speed > 2.0:
             return jsonify({'error': 'Speech speed must be between 0.1 and 2.0'}), 400
         
-        if delay < 0 or delay > 1:
-            return jsonify({'error': 'Delay must be between 0 and 1'}), 400
+        if delay < 0 or delay > 10:
+            return jsonify({'error': 'Delay must be between 0 and 10'}), 400
         
         if subtitle_size < 20 or subtitle_size > 200:
             return jsonify({'error': 'Subtitle size must be between 20 and 200'}), 400

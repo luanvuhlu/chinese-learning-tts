@@ -15,7 +15,6 @@ import re
 # --- CONFIGURATION ---
 BG_IMAGE = "background.png"
 FONT_PATH = "models/msyh.ttc"
-MS_PER_CHAR = 0.3  # 0.3 seconds pause per Chinese character
 
 
 def transform_data(multi_line_text):
@@ -124,7 +123,7 @@ def create_ffmpeg_script(subtitle_configs, subtitle_color="black", subtitle_size
     return filter_script_path
 
 
-def generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_speed, output_audio):
+def generate_audio(data, audio_segments, delay, subtitle_configs, concat_list, speech_speed, output_audio):
     """Generate audio segments with specified speech speed"""
     tts = create_tts()
     current_time = 0.0
@@ -141,7 +140,8 @@ def generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_s
         # 2. Create silence pause only if not single sentence and not the last sentence
         silence_dur = 0
         if num_sentences > 1 and i < num_sentences - 1:
-            silence_dur = count_chinese_chars_only(escape_speaker_text(item['zh'])) * MS_PER_CHAR
+            # silence_dur = count_chinese_chars_only(escape_speaker_text(item['zh'])) * MS_PER_CHAR
+            silence_dur = delay
             silence_path = f"temp_silence_{i}.wav"
             create_silence(silence_dur, audio.sample_rate, silence_path)
             audio_segments.append(silence_path)
@@ -174,24 +174,19 @@ def generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_s
         raise RuntimeError(f"FFmpeg concat failed: {result.stderr}")
 
 
-def create_audio_only(text_content, speech_speed=0.9, delay=0.2, output_path="data/final_audio.mp3"):
+def create_audio_only(text_content, speech_speed=0.9, delay=2.0, output_path="data/final_audio.mp3"):
     """
     Generate audio-only (MP3) from text with specified parameters
     
     Args:
         text_content: Multi-line Chinese text
         speech_speed: Speech speed (0.1 to 2.0)
-        delay: Delay between sentences (0 to 1)
+        delay: Delay between sentences (0 to 10)
         output_path: Path to save output MP3 file
     
     Returns:
         Path to generated MP3 file
     """
-    # Adjust MS_PER_CHAR based on delay parameter
-    global MS_PER_CHAR
-    original_ms_per_char = MS_PER_CHAR
-    MS_PER_CHAR = 0.3 * (1 + delay * 2)
-    
     # Ensure output directory exists
     output_dir = os.path.dirname(output_path)
     if output_dir and not os.path.exists(output_dir):
@@ -211,7 +206,7 @@ def create_audio_only(text_content, speech_speed=0.9, delay=0.2, output_path="da
         output_wav = output_path.replace('.mp3', '.wav')
         
         # Generate audio
-        generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_speed, output_wav)
+        generate_audio(data, audio_segments, delay, subtitle_configs, concat_list, speech_speed, output_wav)
         
         # Verify audio file was created
         if not os.path.exists(output_wav):
@@ -253,18 +248,14 @@ def create_audio_only(text_content, speech_speed=0.9, delay=0.2, output_path="da
                     pass
         raise
         
-    finally:
-        MS_PER_CHAR = original_ms_per_char
-
-
-def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/final_video.mp4", bg_image=None, subtitle_color="black", subtitle_size=100):
+def create_video(text_content, speech_speed=0.9, delay=2.0, output_path="data/final_video.mp4", bg_image=None, subtitle_color="black", subtitle_size=100):
     """
     Generate video from text with specified parameters
     
     Args:
         text_content: Multi-line Chinese text
         speech_speed: Speech speed (0.1 to 2.0)
-        delay: Delay between sentences (0 to 1)
+        delay: Delay between sentences (0 to 10)
         output_path: Path to save output video
         bg_image: Optional path to background image (uses default if None)
         subtitle_color: Subtitle text color ('black', 'white', 'red', etc. or hex '#FFFFFF')
@@ -275,11 +266,6 @@ def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/fi
     """
     # Use provided background image or default
     background_image = bg_image if bg_image and os.path.exists(bg_image) else BG_IMAGE
-    
-    # Adjust MS_PER_CHAR based on delay parameter
-    global MS_PER_CHAR
-    original_ms_per_char = MS_PER_CHAR
-    MS_PER_CHAR = 0.3 * (1 + delay * 2)  # Scale from 0.3 to 0.9 based on delay
     
     # Ensure output directory exists
     output_dir = os.path.dirname(output_path)
@@ -300,7 +286,7 @@ def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/fi
         output_audio = output_path.replace('.mp4', '.wav')
         
         # Generate audio with output_audio path
-        generate_audio(data, audio_segments, subtitle_configs, concat_list, speech_speed, output_audio)
+        generate_audio(data, audio_segments, delay, subtitle_configs, concat_list, speech_speed, output_audio)
         
         # Verify audio file was created
         if not os.path.exists(output_audio):
@@ -347,9 +333,6 @@ def create_video(text_content, speech_speed=0.9, delay=0.2, output_path="data/fi
                 except:
                     pass
         raise
-        
-    finally:
-        MS_PER_CHAR = original_ms_per_char
 
 
 if __name__ == "__main__":

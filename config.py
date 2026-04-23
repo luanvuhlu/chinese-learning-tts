@@ -26,7 +26,6 @@ class Config:
     
     # TTS Configuration
     FONT_PATH = os.getenv('FONT_PATH', 'models/msyh.ttc')
-    MS_PER_CHAR = float(os.getenv('MS_PER_CHAR', 0.3))
     
     # Video Configuration
     BG_IMAGE = os.getenv('BG_IMAGE', 'background.png')
