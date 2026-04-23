@@ -27,6 +27,12 @@ const formTitle = document.getElementById('formTitle');
 const bgImageGroup = document.getElementById('bgImageGroup');
 const bgImageInput = document.getElementById('bgImageInput');
 const imageFileName = document.getElementById('imageFileName');
+const subtitleColorGroup = document.getElementById('subtitleColorGroup');
+const subtitleColorInput = document.getElementById('subtitleColor');
+const colorLabel = document.querySelector('.color-label');
+const subtitleSizeGroup = document.getElementById('subtitleSizeGroup');
+const subtitleSizeSlider = document.getElementById('subtitleSize');
+const sizeValue = document.getElementById('sizeValue');
 const formatRadios = document.querySelectorAll('input[name="output_format"]');
 
 // ============ STATE ============
@@ -93,6 +99,26 @@ if (fileInputLabel) {
     });
 }
 
+// Subtitle color change
+if (subtitleColorInput) {
+    subtitleColorInput.addEventListener('change', (e) => {
+        const colorName = getColorName(e.target.value);
+        if (colorLabel) {
+            colorLabel.textContent = colorName;
+        }
+    });
+}
+
+// Subtitle size change
+if (subtitleSizeSlider) {
+    subtitleSizeSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        if (sizeValue) {
+            sizeValue.textContent = value + 'px';
+        }
+    });
+}
+
 // Generate button click
 generateBtn.addEventListener('click', handleGenerateClick);
 
@@ -117,10 +143,14 @@ function updateFormatUI() {
         formTitle.textContent = 'Generate Audio';
         generateBtn.textContent = 'Generate Audio';
         bgImageGroup.style.display = 'none';
+        if (subtitleColorGroup) subtitleColorGroup.style.display = 'none';
+        if (subtitleSizeGroup) subtitleSizeGroup.style.display = 'none';
     } else {
         formTitle.textContent = 'Generate Video';
         generateBtn.textContent = 'Generate Video';
         bgImageGroup.style.display = 'block';
+        if (subtitleColorGroup) subtitleColorGroup.style.display = 'block';
+        if (subtitleSizeGroup) subtitleSizeGroup.style.display = 'block';
     }
 }
 
@@ -167,6 +197,15 @@ async function handleGenerateClick() {
         if (currentOutputFormat === 'video' && bgImageInput.files.length > 0) {
             formData.append('background_image', bgImageInput.files[0]);
             console.log('📸 Background image added:', bgImageInput.files[0].name);
+        }
+
+        // Add subtitle options if video format
+        if (currentOutputFormat === 'video') {
+            const subtitleColor = subtitleColorInput ? subtitleColorInput.value : '#000000';
+            const subtitleSize = subtitleSizeSlider ? parseInt(subtitleSizeSlider.value) : 100;
+            formData.append('subtitle_color', subtitleColor);
+            formData.append('subtitle_size', subtitleSize);
+            console.log('🎨 Subtitle options:', { color: subtitleColor, size: subtitleSize });
         }
 
         // Call API to generate video/audio
@@ -368,6 +407,12 @@ function resetForm() {
     // Reset file input
     bgImageInput.value = '';
     imageFileName.textContent = '';
+    
+    // Reset subtitle controls
+    if (subtitleColorInput) subtitleColorInput.value = '#000000';
+    if (subtitleSizeSlider) subtitleSizeSlider.value = '100';
+    if (colorLabel) colorLabel.textContent = 'Black';
+    if (sizeValue) sizeValue.textContent = '100px';
 
     // Update displays
     speedValue.textContent = '0.9x';
@@ -437,6 +482,29 @@ function formatTime(seconds) {
  */
 function isValidChineseText(text) {
     return /[\u4e00-\u9fff]/.test(text);
+}
+
+/**
+ * Get color name from hex value
+ */
+function getColorName(hexColor) {
+    const colorMap = {
+        '#000000': 'Black',
+        '#ffffff': 'White',
+        '#ff0000': 'Red',
+        '#00ff00': 'Green',
+        '#0000ff': 'Blue',
+        '#ffff00': 'Yellow',
+        '#00ffff': 'Cyan',
+        '#ff00ff': 'Magenta',
+        '#ffa500': 'Orange',
+        '#800080': 'Purple',
+        '#ffc0cb': 'Pink',
+        '#a52a2a': 'Brown'
+    };
+    
+    const normalizedHex = hexColor.toLowerCase();
+    return colorMap[normalizedHex] || normalizedHex;
 }
 
 // Copy prompt button

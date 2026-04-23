@@ -129,12 +129,12 @@ def generate_audio_task(job_id, text, speech_speed, delay):
         }
 
 
-def generate_video_task(job_id, text, speech_speed, delay, bg_image=None):
+def generate_video_task(job_id, text, speech_speed, delay, bg_image=None, subtitle_color="black", subtitle_size=100):
     """Background task to generate video (MP4)"""
     try:
         output_path = UPLOAD_FOLDER / f"{job_id}.mp4"
         print(f"[Job {job_id[:8]}] Starting video generation...")
-        create_video(text, speech_speed, delay, str(output_path), bg_image)
+        create_video(text, speech_speed, delay, str(output_path), bg_image, subtitle_color, subtitle_size)
         # cleanup after creating new file
         cleanup_excess_files()
         
@@ -286,6 +286,13 @@ def generate():
         except (ValueError, TypeError):
             return jsonify({'error': 'Invalid speech_speed or delay value'}), 400
         
+        # Get subtitle customization (video only)
+        subtitle_color = request.form.get('subtitle_color', 'black')
+        try:
+            subtitle_size = int(request.form.get('subtitle_size', 100))
+        except (ValueError, TypeError):
+            subtitle_size = 100
+        
         # Validate basic parameters
         if not content:
             return jsonify({'error': 'Content is required'}), 400
@@ -301,6 +308,9 @@ def generate():
         
         if delay < 0 or delay > 1:
             return jsonify({'error': 'Delay must be between 0 and 1'}), 400
+        
+        if subtitle_size < 20 or subtitle_size > 200:
+            return jsonify({'error': 'Subtitle size must be between 20 and 200'}), 400
         
         # Handle background image for video
         bg_image_path = None
@@ -337,7 +347,7 @@ def generate():
         else:  # video
             thread = Thread(
                 target=generate_video_task,
-                args=(job_id, content, speech_speed, delay, bg_image_path),
+                args=(job_id, content, speech_speed, delay, bg_image_path, subtitle_color, subtitle_size),
                 daemon=True
             )
         

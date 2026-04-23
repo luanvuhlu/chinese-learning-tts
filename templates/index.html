@@ -92,6 +92,39 @@
                         <small>Supported formats: PNG, JPG, JPEG, BMP, GIF (optional)</small>
                     </div>
 
+                    <!-- Subtitle Color (Video Only) -->
+                    <div class="form-group" id="subtitleColorGroup">
+                        <label for="subtitleColor">Subtitle Color</label>
+                        <div class="color-selector">
+                            <input 
+                                type="color" 
+                                id="subtitleColor" 
+                                class="color-input" 
+                                value="#000000"
+                            >
+                            <span class="color-label">Black</span>
+                        </div>
+                        <small>Choose subtitle text color</small>
+                    </div>
+
+                    <!-- Subtitle Size (Video Only) -->
+                    <div class="form-group" id="subtitleSizeGroup">
+                        <label for="subtitleSize">Subtitle Size</label>
+                        <div class="slider-container">
+                            <input 
+                                type="range" 
+                                id="subtitleSize" 
+                                class="slider" 
+                                min="20" 
+                                max="200" 
+                                step="10" 
+                                value="100"
+                            >
+                            <span class="slider-value" id="sizeValue">100px</span>
+                        </div>
+                        <small>Adjust subtitle font size: 20px to 200px</small>
+                    </div>
+
                     <!-- Content Textarea -->
                     <div class="form-group">
                         <label for="content">Content (Max 1000 characters)</label>
