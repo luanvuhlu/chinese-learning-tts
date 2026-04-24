@@ -37,6 +37,8 @@ const colorLabel = document.querySelector('.color-label');
 const subtitleSizeGroup = document.getElementById('subtitleSizeGroup');
 const subtitleSizeSlider = document.getElementById('subtitleSize');
 const sizeValue = document.getElementById('sizeValue');
+const showPinyinGroup = document.getElementById('showPinyinGroup');
+const showPinyinCheckbox = document.getElementById('showPinyinCheckbox');
 const formatRadios = document.querySelectorAll('input[name="output_format"]');
 
 // ============ STATE ============
@@ -159,12 +161,14 @@ function updateFormatUI() {
         bgImageGroup.style.display = 'none';
         if (subtitleColorGroup) subtitleColorGroup.style.display = 'none';
         if (subtitleSizeGroup) subtitleSizeGroup.style.display = 'none';
+        if (showPinyinGroup) showPinyinGroup.style.display = 'none';
     } else {
         formTitle.textContent = 'Generate Video';
         generateBtn.textContent = 'Generate Video';
         bgImageGroup.style.display = 'block';
         if (subtitleColorGroup) subtitleColorGroup.style.display = 'block';
         if (subtitleSizeGroup) subtitleSizeGroup.style.display = 'block';
+        if (showPinyinGroup) showPinyinGroup.style.display = 'block';
     }
 }
 
@@ -223,9 +227,11 @@ async function handleGenerateClick() {
         if (currentOutputFormat === 'video') {
             const subtitleColor = subtitleColorInput ? subtitleColorInput.value : '#000000';
             const subtitleSize = subtitleSizeSlider ? parseInt(subtitleSizeSlider.value) : 100;
+            const showPinyin = showPinyinCheckbox ? showPinyinCheckbox.checked : true;
             formData.append('subtitle_color', subtitleColor);
             formData.append('subtitle_size', subtitleSize);
-            console.log('🎨 Subtitle options:', { color: subtitleColor, size: subtitleSize });
+            formData.append('show_pinyin', showPinyin);
+            console.log('🎨 Subtitle options:', { color: subtitleColor, size: subtitleSize, showPinyin });
         }
 
         // Call API to generate video/audio
@@ -539,6 +545,7 @@ function resetForm() {
     // Reset subtitle controls
     if (subtitleColorInput) subtitleColorInput.value = '#000000';
     if (subtitleSizeSlider) subtitleSizeSlider.value = '100';
+    if (showPinyinCheckbox) showPinyinCheckbox.checked = true;
     if (colorLabel) colorLabel.textContent = 'Black';
     if (sizeValue) sizeValue.textContent = '100px';
 

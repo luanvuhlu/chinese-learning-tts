@@ -98,7 +98,7 @@ def escape_speaker_text(text):
     return text
 
 
-def create_ffmpeg_script(subtitle_configs, subtitle_color="black", subtitle_size=100):
+def create_ffmpeg_script(subtitle_configs, subtitle_color="black", subtitle_size=100, show_pinyin=True):
     """
     Create FFmpeg filter complex script for subtitles
     
@@ -106,6 +106,7 @@ def create_ffmpeg_script(subtitle_configs, subtitle_color="black", subtitle_size
         subtitle_configs: List of subtitle timing configs
         subtitle_color: Text color (e.g., 'black', 'white', or hex '#FFFFFF')
         subtitle_size: Font size for Chinese text (Pinyin will be 35% of this size)
+        show_pinyin: Whether to render pinyin above Chinese text
     """
     filter_script_path = "filter_complex.txt"
     safe_font = FONT_PATH.replace("\\", "/")
@@ -131,17 +132,24 @@ def create_ffmpeg_script(subtitle_configs, subtitle_color="black", subtitle_size
         zh_esc = escape_ffmpeg_text(conf['zh'])
         py_esc = escape_ffmpeg_text(conf['py'])
         start, end = conf['start'], conf['end']
-        
-        # Pinyin subtitle
-        filter_parts.append(
-            f"drawtext=fontfile='{safe_font}':text='{py_esc}':fontcolor={subtitle_color}:fontsize={pinyin_size}:"
-            f"x=(w-text_w)/2:y=h/2-100:enable='between(t,{start},{end})'"
-        )
-        # Chinese characters subtitle
-        filter_parts.append(
-            f"drawtext=fontfile='{safe_font}':text='{zh_esc}':fontcolor={subtitle_color}:fontsize={subtitle_size}:"
-            f"x=(w-text_w)/2:y=h/2-55:enable='between(t,{start},{end})'"
-        )
+
+        if show_pinyin:
+            # Pinyin subtitle
+            filter_parts.append(
+                f"drawtext=fontfile='{safe_font}':text='{py_esc}':fontcolor={subtitle_color}:fontsize={pinyin_size}:"
+                f"x=(w-text_w)/2:y=h/2-100:enable='between(t,{start},{end})'"
+            )
+            # Chinese characters subtitle
+            filter_parts.append(
+                f"drawtext=fontfile='{safe_font}':text='{zh_esc}':fontcolor={subtitle_color}:fontsize={subtitle_size}:"
+                f"x=(w-text_w)/2:y=h/2-55:enable='between(t,{start},{end})'"
+            )
+        else:
+            # Chinese characters subtitle only
+            filter_parts.append(
+                f"drawtext=fontfile='{safe_font}':text='{zh_esc}':fontcolor={subtitle_color}:fontsize={subtitle_size}:"
+                f"x=(w-text_w)/2:y=(h-text_h)/2:enable='between(t,{start},{end})'"
+            )
 
     with open(filter_script_path, "w", encoding="utf-8") as f:
         f.write(",".join(filter_parts))
@@ -274,7 +282,7 @@ def create_audio_only(text_content, speech_speed=0.9, delay=2.0, output_path="da
                     pass
         raise
         
-def create_video(text_content, speech_speed=0.9, delay=2.0, output_path="data/final_video.mp4", bg_image=None, subtitle_color="black", subtitle_size=100):
+def create_video(text_content, speech_speed=0.9, delay=2.0, output_path="data/final_video.mp4", bg_image=None, subtitle_color="black", subtitle_size=100, show_pinyin=True):
     """
     Generate video from text with specified parameters
     
@@ -318,7 +326,7 @@ def create_video(text_content, speech_speed=0.9, delay=2.0, output_path="data/fi
         if not os.path.exists(output_audio):
             raise RuntimeError(f"Audio file was not created: {output_audio}")
         
-        filter_script_path = create_ffmpeg_script(subtitle_configs, subtitle_color, subtitle_size)
+        filter_script_path = create_ffmpeg_script(subtitle_configs, subtitle_color, subtitle_size, show_pinyin)
         print("🎬 Rendering final video...")
         
         # Render video with specified background image

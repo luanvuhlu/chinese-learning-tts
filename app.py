@@ -129,12 +129,12 @@ def generate_audio_task(job_id, text, speech_speed, delay):
         }
 
 
-def generate_video_task(job_id, text, speech_speed, delay, bg_image=None, subtitle_color="black", subtitle_size=100):
+def generate_video_task(job_id, text, speech_speed, delay, bg_image=None, subtitle_color="black", subtitle_size=100, show_pinyin=True):
     """Background task to generate video (MP4)"""
     try:
         output_path = UPLOAD_FOLDER / f"{job_id}.mp4"
         print(f"[Job {job_id[:8]}] Starting video generation...")
-        create_video(text, speech_speed, delay, str(output_path), bg_image, subtitle_color, subtitle_size)
+        create_video(text, speech_speed, delay, str(output_path), bg_image, subtitle_color, subtitle_size, show_pinyin)
         # cleanup after creating new file
         cleanup_excess_files()
         
@@ -319,6 +319,8 @@ def generate():
             subtitle_size = int(request.form.get('subtitle_size', 100))
         except (ValueError, TypeError):
             subtitle_size = 100
+        show_pinyin_value = request.form.get('show_pinyin', 'true')
+        show_pinyin = str(show_pinyin_value).lower() in ['1', 'true', 'yes', 'on']
         
         # Validate basic parameters
         if not content:
@@ -374,7 +376,7 @@ def generate():
         elif output_format == 'video':
             thread = Thread(
                 target=generate_video_task,
-                args=(job_id, content, speech_speed, delay, bg_image_path, subtitle_color, subtitle_size),
+                args=(job_id, content, speech_speed, delay, bg_image_path, subtitle_color, subtitle_size, show_pinyin),
                 daemon=True
             )
         else:  # pinyin
