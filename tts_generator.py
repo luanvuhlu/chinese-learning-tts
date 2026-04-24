@@ -28,6 +28,31 @@ def transform_data(multi_line_text):
     return data_list
 
 
+def create_pinyin_only(text_content):
+    """
+    Generate pinyin-only text from Chinese text
+    
+    Args:
+        text_content: Multi-line Chinese text
+    
+    Returns:
+        String containing only pinyin text, one line per sentence
+    """
+    try:
+        data = transform_data(text_content)
+        if not data:
+            raise ValueError("No valid Chinese sentences found in text")
+        
+        pinyin_lines = []
+        for item in data:
+            pinyin_lines.append(item['py'])
+        
+        return "\n".join(pinyin_lines)
+        
+    except Exception as e:
+        raise
+
+
 def count_chinese_chars_only(text):
     """Count only Chinese characters in the text"""
     return sum(1 for _ in re.finditer(r'[\u4e00-\u9fff]', text))

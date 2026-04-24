@@ -281,6 +281,17 @@ body {
     box-shadow: 0 6px 12px rgba(139, 92, 246, 0.3);
 }
 
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+}
+
 .video-controls {
     display: flex;
     gap: 1rem;
@@ -750,6 +761,43 @@ body {
     min-width: 150px;
 }
 
+/* ============ PINYIN DISPLAY ============ */
+.pinyin-container {
+    text-align: center;
+}
+
+.pinyin-display {
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    text-align: left;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.pinyin-text {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.pinyin-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.pinyin-controls .btn {
+    flex: 1;
+    min-width: 150px;
+}
+
 /* ============ VIDEO/AUDIO CONTROLS ============ */
 .video-controls, .audio-controls {
     display: flex;
@@ -773,11 +821,11 @@ body {
         padding: 1.5rem 1rem;
     }
 
-    .video-controls, .audio-controls {
+    .video-controls, .audio-controls, .pinyin-controls {
         flex-direction: column;
     }
 
-    .video-controls .btn, .audio-controls .btn {
+    .video-controls .btn, .audio-controls .btn, .pinyin-controls .btn {
         width: 100%;
         min-width: auto;
     }

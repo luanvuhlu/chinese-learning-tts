@@ -14,6 +14,8 @@ const resultSection = document.getElementById('resultSection');
 const progressContainer = document.getElementById('progressContainer');
 const videoContainer = document.getElementById('videoContainer');
 const audioContainer = document.getElementById('audioContainer');
+const pinyinContainer = document.getElementById('pinyinContainer');
+const pinyinText = document.getElementById('pinyinText');
 const errorContainer = document.getElementById('errorContainer');
 const videoPlayer = document.getElementById('videoPlayer');
 const audioPlayer = document.getElementById('audioPlayer');
@@ -21,6 +23,8 @@ const downloadBtn = document.getElementById('downloadBtn');
 const downloadAudioBtn = document.getElementById('downloadAudioBtn');
 const newGenerateBtn = document.getElementById('newGenerateBtn');
 const newGenerateAudioBtn = document.getElementById('newGenerateAudioBtn');
+const newGeneratePinyinBtn = document.getElementById('newGeneratePinyinBtn');
+const copyPinyinBtn = document.getElementById('copyPinyinBtn');
 const errorText = document.getElementById('errorText');
 const retryBtn = document.getElementById('retryBtn');
 const formTitle = document.getElementById('formTitle');
@@ -129,6 +133,10 @@ if (downloadAudioBtn) downloadAudioBtn.addEventListener('click', handleDownloadA
 // New generate buttons
 if (newGenerateBtn) newGenerateBtn.addEventListener('click', resetForm);
 if (newGenerateAudioBtn) newGenerateAudioBtn.addEventListener('click', resetForm);
+if (newGeneratePinyinBtn) newGeneratePinyinBtn.addEventListener('click', resetForm);
+
+// Copy button
+if (copyPinyinBtn) copyPinyinBtn.addEventListener('click', handleCopyPinyinClick);
 
 // Retry button
 if (retryBtn) retryBtn.addEventListener('click', resetForm);
@@ -142,6 +150,12 @@ function updateFormatUI() {
     if (currentOutputFormat === 'audio') {
         formTitle.textContent = 'Generate Audio';
         generateBtn.textContent = 'Generate Audio';
+        bgImageGroup.style.display = 'none';
+        if (subtitleColorGroup) subtitleColorGroup.style.display = 'none';
+        if (subtitleSizeGroup) subtitleSizeGroup.style.display = 'none';
+    } else if (currentOutputFormat === 'pinyin') {
+        formTitle.textContent = 'Generate Pinyin';
+        generateBtn.textContent = 'Generate Pinyin';
         bgImageGroup.style.display = 'none';
         if (subtitleColorGroup) subtitleColorGroup.style.display = 'none';
         if (subtitleSizeGroup) subtitleSizeGroup.style.display = 'none';
@@ -175,7 +189,13 @@ async function handleGenerateClick() {
 
     // Disable button and show progress
     generateBtn.disabled = true;
-    generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generating...' : 'Generating...';
+    if (currentOutputFormat === 'audio') {
+        generateBtn.textContent = 'Generating Audio...';
+    } else if (currentOutputFormat === 'pinyin') {
+        generateBtn.textContent = 'Generating Pinyin...';
+    } else {
+        generateBtn.textContent = 'Generating Video...';
+    }
 
     try {
         console.log('📤 Sending request to API...');
@@ -229,6 +249,7 @@ async function handleGenerateClick() {
         progressContainer.style.display = 'block';
         videoContainer.style.display = 'none';
         audioContainer.style.display = 'none';
+        pinyinContainer.style.display = 'none';
         errorContainer.style.display = 'none';
 
         // Scroll to result section
@@ -240,7 +261,13 @@ async function handleGenerateClick() {
     } catch (error) {
         console.error('❌ Error:', error);
         generateBtn.disabled = false;
-        generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generate Audio' : 'Generate Video';
+        if (currentOutputFormat === 'audio') {
+            generateBtn.textContent = 'Generate Audio';
+        } else if (currentOutputFormat === 'pinyin') {
+            generateBtn.textContent = 'Generate Pinyin';
+        } else {
+            generateBtn.textContent = 'Generate Video';
+        }
         showError(error.message || `Failed to generate ${currentOutputFormat}`);
     }
 }
@@ -266,7 +293,12 @@ function pollJobStatus() {
             
             // Update progress text based on elapsed time (created_at is Unix timestamp in milliseconds)
             const elapsedSeconds = Math.floor((Date.now() - job.created_at) / 1000);
-            const formatType = job.output_format === 'audio' ? 'audio' : 'video';
+            let formatType = 'video';
+            if (job.output_format === 'audio') {
+                formatType = 'audio';
+            } else if (job.output_format === 'pinyin') {
+                formatType = 'pinyin';
+            }
             let progressMsg = `Generating ${formatType}... (${elapsedSeconds}s elapsed)`;
             
             if (elapsedSeconds > 30) {
@@ -278,7 +310,7 @@ function pollJobStatus() {
             if (job.status === 'completed') {
                 clearInterval(statusCheckInterval);
                 console.log('✅ Generation completed');
-                showResult(job.output_format);
+                showResult(job);
             } else if (job.status === 'failed') {
                 clearInterval(statusCheckInterval);
                 console.error('❌ Generation failed:', job.error);
@@ -297,13 +329,15 @@ function pollJobStatus() {
 /**
  * Show result (video or audio)
  */
-function showResult(outputFormat) {
+function showResult(job) {
+    const outputFormat = job.output_format || job.file_type;
     progressContainer.style.display = 'none';
     errorContainer.style.display = 'none';
 
     if (outputFormat === 'audio') {
         videoContainer.style.display = 'none';
         audioContainer.style.display = 'block';
+        pinyinContainer.style.display = 'none';
 
         // Set audio source
         const audioUrl = `/api/videos/${currentJobId}`;
@@ -311,8 +345,19 @@ function showResult(outputFormat) {
 
         // Scroll to audio player
         audioContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (outputFormat === 'pinyin') {
+        videoContainer.style.display = 'none';
+        audioContainer.style.display = 'none';
+        pinyinContainer.style.display = 'block';
+
+        // Display pinyin text directly from job data
+        pinyinText.textContent = job.pinyin_text || 'No pinyin text available';
+
+        // Scroll to pinyin display
+        pinyinContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
         audioContainer.style.display = 'none';
+        pinyinContainer.style.display = 'none';
         videoContainer.style.display = 'block';
 
         // Set video source
@@ -325,7 +370,13 @@ function showResult(outputFormat) {
 
     // Re-enable generate button
     generateBtn.disabled = false;
-    generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generate Audio' : 'Generate Video';
+    if (currentOutputFormat === 'audio') {
+        generateBtn.textContent = 'Generate Audio';
+    } else if (currentOutputFormat === 'pinyin') {
+        generateBtn.textContent = 'Generate Pinyin';
+    } else {
+        generateBtn.textContent = 'Generate Video';
+    }
 }
 
 /**
@@ -336,6 +387,7 @@ function showError(message) {
     progressContainer.style.display = 'none';
     videoContainer.style.display = 'none';
     audioContainer.style.display = 'none';
+    pinyinContainer.style.display = 'none';
     errorContainer.style.display = 'block';
     
     // Truncate very long error messages
@@ -352,7 +404,13 @@ function showError(message) {
 
     // Re-enable button
     generateBtn.disabled = false;
-    generateBtn.textContent = currentOutputFormat === 'audio' ? 'Generate Audio' : 'Generate Video';
+    if (currentOutputFormat === 'audio') {
+        generateBtn.textContent = 'Generate Audio';
+    } else if (currentOutputFormat === 'pinyin') {
+        generateBtn.textContent = 'Generate Pinyin';
+    } else {
+        generateBtn.textContent = 'Generate Video';
+    }
 
     // Scroll to error
     setTimeout(() => {
@@ -388,6 +446,76 @@ function handleDownloadAudioClick() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+/**
+ * Handle pinyin copy button click
+ */
+function handleCopyPinyinClick() {
+    if (!pinyinText || !pinyinText.textContent) return;
+
+    const textToCopy = pinyinText.textContent;
+    
+    // Use the modern Clipboard API if available
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            // Show success feedback
+            const originalText = copyPinyinBtn.textContent;
+            copyPinyinBtn.textContent = '✅ Copied!';
+            copyPinyinBtn.classList.add('btn-success');
+            
+            setTimeout(() => {
+                copyPinyinBtn.textContent = originalText;
+                copyPinyinBtn.classList.remove('btn-success');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            fallbackCopyTextToClipboard(textToCopy);
+        });
+    } else {
+        // Fallback for older browsers
+        fallbackCopyTextToClipboard(textToCopy);
+    }
+}
+
+/**
+ * Fallback copy function for older browsers
+ */
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            // Show success feedback
+            const originalText = copyPinyinBtn.textContent;
+            copyPinyinBtn.textContent = '✅ Copied!';
+            copyPinyinBtn.classList.add('btn-success');
+            
+            setTimeout(() => {
+                copyPinyinBtn.textContent = originalText;
+                copyPinyinBtn.classList.remove('btn-success');
+            }, 2000);
+        } else {
+            alert('Failed to copy text. Please copy manually.');
+        }
+    } catch (err) {
+        console.error('Fallback copy failed: ', err);
+        alert('Failed to copy text. Please copy manually.');
+    }
+
+    document.body.removeChild(textArea);
 }
 
 /**

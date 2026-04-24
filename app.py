@@ -7,10 +7,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 from threading import Thread, Lock
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, Response
 from flask_cors import CORS
 from config import config
-from tts_generator import create_video, create_audio_only
+from tts_generator import create_video, create_audio_only, create_pinyin_only
 from werkzeug.utils import secure_filename
 
 
@@ -92,8 +92,8 @@ def validate_parameters(data):
     
     # Validate output format
     output_format = data.get('output_format', 'video')
-    if output_format not in ['audio', 'video']:
-        errors.append("Output format must be 'audio' or 'video'")
+    if output_format not in ['audio', 'video', 'pinyin']:
+        errors.append("Output format must be 'audio', 'video', or 'pinyin'")
     
     # Validate content
     content = data.get('content', '').strip()
@@ -172,6 +172,28 @@ def generate_video_task(job_id, text, speech_speed, delay, bg_image=None, subtit
         generation_lock.release()
         print("🔓 Server is ready for next request")
 
+
+def generate_pinyin_task(job_id, text):
+    """Background task to generate pinyin text"""
+    try:
+        print(f"[Job {job_id[:8]}] Starting pinyin generation...")
+        pinyin_text = create_pinyin_only(text)
+        
+        jobs[job_id] = {
+            'status': 'completed',
+            'pinyin_text': pinyin_text,
+            'file_type': 'pinyin',
+            'completed_at': datetime.now().isoformat()
+        }
+        print(f"[Job {job_id[:8]}] ✅ Pinyin generation completed")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[Job {job_id[:8]}] ❌ Error: {error_msg}")
+        jobs[job_id] = {
+            'status': 'failed',
+            'error': error_msg
+        }
+
 # ============ WEB ROUTES ============
 
 @app.route('/')
@@ -226,7 +248,12 @@ def list_videos():
                     continue
             
             stat = file.stat()
-            file_type = 'video' if file.suffix == '.mp4' else 'audio'
+            if file.suffix == '.mp4':
+                file_type = 'video'
+            elif file.suffix == '.mp3':
+                file_type = 'audio'
+            else:  # .txt
+                file_type = 'pinyin'
 
             items.append({
                 "id": file_id,
@@ -300,8 +327,8 @@ def generate():
         if len(content) > 1000:
             return jsonify({'error': 'Content must not exceed 1000 characters'}), 400
         
-        if output_format not in ['audio', 'video']:
-            return jsonify({'error': 'Output format must be "audio" or "video"'}), 400
+        if output_format not in ['audio', 'video', 'pinyin']:
+            return jsonify({'error': 'Output format must be "audio", "video", or "pinyin"'}), 400
         
         if speech_speed < 0.1 or speech_speed > 2.0:
             return jsonify({'error': 'Speech speed must be between 0.1 and 2.0'}), 400
@@ -344,10 +371,16 @@ def generate():
                 args=(job_id, content, speech_speed, delay),
                 daemon=True
             )
-        else:  # video
+        elif output_format == 'video':
             thread = Thread(
                 target=generate_video_task,
                 args=(job_id, content, speech_speed, delay, bg_image_path, subtitle_color, subtitle_size),
+                daemon=True
+            )
+        else:  # pinyin
+            thread = Thread(
+                target=generate_pinyin_task,
+                args=(job_id, content),
                 daemon=True
             )
         
@@ -386,11 +419,18 @@ def get_status(job_id):
 @app.route('/api/videos/<video_id>', methods=['GET'])
 def get_video(video_id):
     """
-    Download or stream video/audio file
+    Download or stream video/audio file, or return pinyin text
     
-    Supports both .mp4 (video) and .mp3 (audio) files
+    Supports .mp4 (video), .mp3 (audio), and pinyin text
     """
-    # Try both mp4 and mp3 extensions
+    # Check if this is a completed pinyin job
+    if video_id in jobs:
+        job = jobs[video_id]
+        if job.get('file_type') == 'pinyin' and job.get('status') == 'completed':
+            pinyin_text = job.get('pinyin_text', '')
+            return Response(pinyin_text, mimetype='text/plain')
+    
+    # Try mp4 and mp3 extensions for video/audio files
     mp4_path = UPLOAD_FOLDER / f"{video_id}.mp4"
     mp3_path = UPLOAD_FOLDER / f"{video_id}.mp3"
     
@@ -408,7 +448,7 @@ def get_video(video_id):
         download_ext = '.mp3'
     
     if not file_path:
-        print(f"❌ File not found: {video_id} (tried .mp4 and .mp3)")
+        print(f"❌ File not found: {video_id} (tried .mp4, .mp3, and pinyin job)")
         return jsonify({'error': f'File not found: {video_id}'}), 404
     
     try:
