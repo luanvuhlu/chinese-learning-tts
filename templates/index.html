@@ -173,6 +173,34 @@
                 </div>
             </section>
 
+            <!-- Speech-to-Text Section -->
+            <section class="stt-section">
+                <div class="stt-container">
+                    <h2>🎙️ Speech-to-Text (STT)</h2>
+                    <p>Upload a short audio clip and we'll transcribe it to text (Chinese).</p>
+
+                    <div class="form-group">
+                        <label for="sttAudioInput">Audio File</label>
+                        <input type="file" id="sttAudioInput" accept="audio/*">
+                        <small>Supported: WAV, MP3, M4A, OGG, WEBM, FLAC (will be converted)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <button id="sttUploadBtn" class="btn btn-primary">Transcribe Audio</button>
+                        <div id="sttStatus" style="margin-top:12px;color:#333;display:none;"></div>
+                    </div>
+
+                    <div class="form-group" id="sttResultGroup" style="display:none; margin-top:12px;">
+                        <h3>Transcript</h3>
+                        <pre id="sttTranscript" class="pinyin-text" style="white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:6px;"></pre>
+                        <div style="margin-top:8px;">
+                            <button id="downloadTranscriptBtn" class="btn btn-secondary">⬇️ Download Transcript</button>
+                            <button id="copyTranscriptBtn" class="btn btn-primary">📋 Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Result Section -->
             <section class="result-section" id="resultSection" style="display: none;">
                 <div class="result-container">

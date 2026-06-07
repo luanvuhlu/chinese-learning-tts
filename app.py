@@ -12,6 +12,7 @@ from flask_cors import CORS
 from config import config
 from tts_generator import create_video, create_audio_only, create_pinyin_only
 from werkzeug.utils import secure_filename
+from stt import transcribe_file
 
 
 # Configuration
@@ -193,6 +194,48 @@ def generate_pinyin_task(job_id, text):
             'status': 'failed',
             'error': error_msg
         }
+
+
+def generate_stt_task(job_id, audio_path):
+    """Background task to transcribe audio files"""
+    try:
+        print(f"[STT Job {job_id[:8]}] Starting transcription: {audio_path}")
+        # Transcribe into working uploads dir
+        res = transcribe_file(audio_path, working_dir=str(UPLOAD_FOLDER))
+
+        transcript = res.get('transcript', '')
+        duration = res.get('duration')
+        engine = res.get('engine')
+
+        # Save transcript to disk
+        txt_path = UPLOAD_FOLDER / f"{job_id}.txt"
+        with open(txt_path, 'w', encoding='utf-8') as f:
+            f.write(transcript)
+
+        jobs[job_id] = {
+            'status': 'completed',
+            'file_path': str(txt_path),
+            'file_type': 'transcript',
+            'transcript': transcript,
+            'duration': duration,
+            'engine': engine,
+            'completed_at': datetime.now().isoformat()
+        }
+        print(f"[STT Job {job_id[:8]}] ✅ Transcription completed")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[STT Job {job_id[:8]}] ❌ Error: {error_msg}")
+        jobs[job_id] = {
+            'status': 'failed',
+            'error': error_msg
+        }
+    finally:
+        # Remove uploaded audio file to save space
+        try:
+            if audio_path and os.path.exists(audio_path):
+                os.remove(audio_path)
+        except:
+            pass
 
 # ============ WEB ROUTES ============
 
@@ -399,6 +442,47 @@ def generate():
         print(f"❌ API Error: {str(e)}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
+
+@app.route('/api/stt', methods=['POST'])
+def stt_upload():
+    """Upload an audio file and start transcription job.
+
+    multipart/form-data: audio=<file>
+    Returns 202 with job_id on success.
+    """
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided. Field name must be "audio".'}), 400
+
+        audio_file = request.files['audio']
+        if not audio_file or not audio_file.filename:
+            return jsonify({'error': 'Invalid audio file'}), 400
+
+        filename = secure_filename(f"stt_{uuid.uuid4()}_{audio_file.filename}")
+        saved_path = str(UPLOAD_FOLDER / filename)
+        audio_file.save(saved_path)
+
+        job_id = str(uuid.uuid4())
+        jobs[job_id] = {'status': 'pending', 'created_at': int(datetime.now().timestamp() * 1000)}
+
+        thread = Thread(target=generate_stt_task, args=(job_id, saved_path), daemon=True)
+        thread.start()
+
+        return jsonify({'job_id': job_id, 'status': 'pending', 'message': 'Transcription started'}), 202
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/stt/<job_id>', methods=['GET'])
+def stt_status(job_id):
+    try:
+        job = jobs.get(job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        return jsonify(job), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/status/<job_id>', methods=['GET'])
 def get_status(job_id):
     """
@@ -435,6 +519,7 @@ def get_video(video_id):
     # Try mp4 and mp3 extensions for video/audio files
     mp4_path = UPLOAD_FOLDER / f"{video_id}.mp4"
     mp3_path = UPLOAD_FOLDER / f"{video_id}.mp3"
+    txt_path = UPLOAD_FOLDER / f"{video_id}.txt"
     
     file_path = None
     mime_type = None
@@ -448,6 +533,10 @@ def get_video(video_id):
         file_path = mp3_path
         mime_type = 'audio/mpeg'
         download_ext = '.mp3'
+    elif txt_path.exists():
+        file_path = txt_path
+        mime_type = 'text/plain'
+        download_ext = '.txt'
     
     if not file_path:
         print(f"❌ File not found: {video_id} (tried .mp4, .mp3, and pinyin job)")

@@ -726,3 +726,131 @@ document.getElementById("refreshVideosBtn")
     .addEventListener("click", loadVideos);
 
 loadVideos();
+
+// ============ STT UI Elements ============
+const sttAudioInput = document.getElementById('sttAudioInput');
+const sttUploadBtn = document.getElementById('sttUploadBtn');
+const sttStatus = document.getElementById('sttStatus');
+const sttResultGroup = document.getElementById('sttResultGroup');
+const sttTranscript = document.getElementById('sttTranscript');
+const downloadTranscriptBtn = document.getElementById('downloadTranscriptBtn');
+const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+
+let sttJobId = null;
+let sttPollInterval = null;
+
+if (sttUploadBtn) {
+    sttUploadBtn.addEventListener('click', async () => {
+        if (!sttAudioInput || sttAudioInput.files.length === 0) {
+            sttStatus.style.display = 'block';
+            sttStatus.textContent = 'Please select an audio file to upload.';
+            return;
+        }
+
+        const file = sttAudioInput.files[0];
+        sttStatus.style.display = 'block';
+        sttStatus.textContent = 'Uploading...';
+        sttUploadBtn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            const res = await fetch('/api/stt', { method: 'POST', body: formData });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || `HTTP ${res.status}`);
+            }
+
+            const data = await res.json();
+            sttJobId = data.job_id;
+            sttStatus.textContent = 'Transcription started...';
+
+            // Start polling for STT job
+            pollSttStatus();
+
+        } catch (err) {
+            console.error('STT upload error', err);
+            sttStatus.textContent = `Upload failed: ${err.message}`;
+            sttUploadBtn.disabled = false;
+        }
+    });
+}
+
+function pollSttStatus() {
+    if (sttPollInterval) clearInterval(sttPollInterval);
+    sttPollInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`/api/stt/${sttJobId}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const job = await res.json();
+            if (job.status === 'pending') {
+                sttStatus.textContent = 'Transcribing...';
+                return;
+            }
+
+            if (job.status === 'completed') {
+                clearInterval(sttPollInterval);
+                sttStatus.textContent = 'Completed';
+                sttResultGroup.style.display = 'block';
+                sttTranscript.textContent = job.transcript || '';
+                sttUploadBtn.disabled = false;
+                return;
+            }
+
+            if (job.status === 'failed') {
+                clearInterval(sttPollInterval);
+                sttStatus.textContent = `Failed: ${job.error || 'Unknown error'}`;
+                sttUploadBtn.disabled = false;
+                return;
+            }
+
+        } catch (err) {
+            clearInterval(sttPollInterval);
+            console.error('STT status error', err);
+            sttStatus.textContent = `Error checking status: ${err.message}`;
+            sttUploadBtn.disabled = false;
+        }
+    }, 2000);
+}
+
+if (copyTranscriptBtn) {
+    copyTranscriptBtn.addEventListener('click', async () => {
+        const text = sttTranscript.textContent || '';
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+            copyTranscriptBtn.textContent = '✅ Copied!';
+            setTimeout(() => { copyTranscriptBtn.textContent = '📋 Copy'; }, 1500);
+        } catch (err) {
+            console.error('Copy failed', err);
+            alert('Failed to copy. Please copy manually.');
+        }
+    });
+}
+
+if (downloadTranscriptBtn) {
+    downloadTranscriptBtn.addEventListener('click', () => {
+        if (!sttJobId) return;
+        const url = `/api/stt/${sttJobId}`; // endpoint returns job JSON including file_path
+        // Fetch the job info to get the file path and then download
+        fetch(url).then(r => r.json()).then(job => {
+            if (job.status === 'completed' && job.file_path) {
+                const link = document.createElement('a');
+                link.href = `/api/videos/${sttJobId}`; // reusing /api/videos endpoint isn't perfect for .txt but downloads are supported via file path
+                link.download = `transcript_${sttJobId.substring(0,8)}.txt`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert('Transcript not available yet.');
+            }
+        }).catch(err => {
+            console.error(err);
+            alert('Failed to download transcript');
+        });
+    });
+}

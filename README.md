@@ -186,6 +186,95 @@ The project uses the following models (pre-downloaded):
 
 These models are required for TTS operation.
 
+## Speech-to-Text (STT) Configuration
+
+The project includes a Speech-to-Text feature using **OpenAI Whisper** for transcribing Chinese audio.
+
+### Whisper Model Selection
+
+| Model | Size | RAM Required | Speed (per min audio) | Accuracy | Recommendation |
+|-------|------|--------------|--------|----------|---------|
+| **tiny** | 39 MB | ~500 MB | 10-30s | Good | ✅ 2GB RAM servers |
+| **base** | 140 MB | ~1 GB | 30-60s | Good | ✅ 2-4GB RAM |
+| **small** | 466 MB | ~1.5-2 GB | 1-2 min | Very Good | 4GB+ RAM |
+| **medium** | 1.5 GB | ~3-4 GB | 2-5 min | Excellent | 8GB+ RAM |
+| **large** | 2.9 GB | ~5-6 GB | 5-10 min | Best | 16GB+ RAM + GPU |
+
+### Configuration for Your Server
+
+**For 2GB RAM (no GPU):**
+```bash
+# Set in .env or export before running
+export WHISPER_MODEL=tiny
+# or
+export WHISPER_MODEL=base
+```
+
+**For 4GB+ RAM (no GPU):**
+```bash
+export WHISPER_MODEL=small
+```
+
+### Automatic Model Download
+
+Whisper models are **automatically downloaded** on first use to `~/.cache/models/`. No manual setup required.
+
+First request will take longer (downloads model), subsequent requests are fast.
+
+### STT API Endpoints
+
+#### 1. Upload Audio for Transcription
+```
+POST /api/stt
+Content-Type: multipart/form-data
+
+FormData: audio=<file>
+
+Response (202 Accepted):
+{
+  "job_id": "uuid-string",
+  "status": "pending",
+  "message": "Transcription started"
+}
+```
+
+#### 2. Check Transcription Status
+```
+GET /api/stt/<job_id>
+
+Response (200 OK):
+{
+  "status": "pending|completed|failed",
+  "transcript": "transcribed text",  // if completed
+  "duration": 5.2,                   // audio duration in seconds
+  "engine": "whisper",
+  "error": "error message"           // if failed
+}
+```
+
+#### 3. Download Transcript
+```
+GET /api/videos/<job_id>?download=true
+
+Returns: .txt file with transcript
+```
+
+### Using STT via Web UI
+
+1. Go to the **Speech-to-Text (STT)** section
+2. Upload an audio file (supports: WAV, MP3, M4A, OGG, WEBM, FLAC)
+3. Click "Transcribe Audio"
+4. View transcript when complete
+5. Copy or download transcript as needed
+
+### Performance Notes
+
+- **CPU-only processing**: Whisper runs on CPU and is slower than GPU
+- **2GB RAM server**: Use `tiny` model, expect 10-30s per minute of audio
+- **Memory constrained**: Monitor memory during first transcription (model loading)
+- **First request slower**: Includes model download/load time
+- **Concurrent requests**: Be cautious with multiple simultaneous transcriptions on low-RAM servers
+
 ## Responsive Design
 
 The application is fully responsive:
