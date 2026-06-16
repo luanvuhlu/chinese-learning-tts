@@ -201,7 +201,7 @@ def generate_stt_task(job_id, audio_path):
     try:
         print(f"[STT Job {job_id[:8]}] Starting transcription: {audio_path}")
         # Transcribe into working uploads dir
-        res = transcribe_file(audio_path, working_dir=str(UPLOAD_FOLDER))
+        res = transcribe_file(audio_path, working_dir=str(UPLOAD_FOLDER), engine_preference=['whisper'])
 
         transcript = res.get('transcript', '')
         duration = res.get('duration')
