@@ -45,6 +45,7 @@ def create_pinyin_only(text_content):
         
         pinyin_lines = []
         for item in data:
+            pinyin_lines.append(item['zh'])
             pinyin_lines.append(item['py'])
         
         return "\n".join(pinyin_lines)
